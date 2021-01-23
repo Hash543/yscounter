@@ -1,7 +1,7 @@
-require('nw.gui').Window.get().maximize()
+//require('nw.gui').Window.get().maximize()
 var fs = require('fs');
 var versionFile = "public/v.txt";
-var version = fs.readFileSync(versionFile, { encoding: 'utf-8' });
+var version = require('./package.json').version;
 var http = require('http');
 var config = require("./config.js");
 var jade = require("jade");
@@ -54,7 +54,7 @@ $(document).ready(function () {
       if (parseInt(nowVer * 10000) + parseInt(nowBlock * 100) + parseInt(nowDetail) < parseInt(ver * 10000) + parseInt(block * 100) + parseInt(detail)) {
         var download = require("url-download");
         var unzip = require("unzipper");
-        download('https://github.com/h5665773/yscounter/archive/master.zip', './')
+        download(config.updateURL, './')
           .on('close', function () {
             console.log('One file has been downloaded.');
             //fs.createReadStream('master.zip').pipe(unzip.Extract({ path: '../test/download' }));

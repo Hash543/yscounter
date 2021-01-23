@@ -140,7 +140,7 @@
         <div align="center">
           <button type="button" class="btn btn-success" id="goWork"
             style="width:100px;height:44px;line-height: 1;font-size: 20px;font-weight:bold;display:none"
-            aria-haspopup="true" id="offWork" aria-expanded="false">上班打卡</button>
+            aria-haspopup="true" aria-expanded="false">上班打卡</button>
           <button type="button" class="btn btn-warning" id="offWork"
             style="width:100px;height:44px;line-height: 1;font-size: 20px;font-weight:bold;display:none"
             aria-haspopup="true" aria-expanded="false">下班打卡</button>
@@ -171,7 +171,7 @@
         <table class="table table-bordered" v-for="(ps,pk) in list">
           <thead>
             <tr>
-              <th colspan="8">{{ps.F_POINT_NAME}} <span class="label label-warning">國 = 國定假日,特 = 特休</span>
+              <th colspan="8">{{ps.F_POINT_NAME}} <span class="label label-warning">國 = 國定假日</span>
             </tr>
           </thead>
           <tbody>
@@ -375,19 +375,55 @@
         loading.addClass("rotateIn");
 
         exec("node scan.js", function (err, data, c) {
-          //data = 'T10220';
-          //err = null;
+          data = 'H10078';
+          err = null;
           if (err == null && data.length > 0) {
             data = data.trim();
             var parse = data.match(/([A-Z]{1}[0-9]+)([A-Z]?)/);
             scanEmpId = parse[1];
-            console.log(config.apiHost + 'api/empName&empWarnings/' + currentCust + '/000/' + scanEmpId);
+            $.ajax({
+              type: `post`,
+              url: config.ajaxOrder,
+              data: {
+                Order: `Get_EmpNameAndEmpWarning`,
+                F_EMP_ID: scanEmpId,
+                F_CU_ID: currentCust
+              },
+              dataType: `json`,
+              success: function (dataSet) {
+                console.log(dataSet);
+                empName.html(dataSet.data1[0]['F_EMP_NAME']);
+                vueLoadingMask.warnings = dataSet.data2;
+                vueScheduleList.warnings = dataSet.data2;
+              }
+            });
+            //console.log(config.apiHost + 'api/empName&empWarnings/' + currentCust + '/000/' + scanEmpId);
             //console.log(config.apiHost + 'api/pointByCust&empCurrentSchedule2/'+currentCust+'/000/'+scanEmpId);
-            request(config.apiHost + 'api/empName&empWarnings/' + currentCust + '/000/' + scanEmpId, function (error, response, body) {
-              var row = JSON.parse(body);
-              empName.html(row['data1'][0]['F_EMP_NAME']);
-              vueLoadingMask.warnings = row['data2']
-              vueScheduleList.warnings = row['data2']
+            //request(config.apiHost + 'api/empName&empWarnings/' + currentCust + '/000/' + scanEmpId, function (error, response, body) {
+            //var row = JSON.parse(body);
+            //empName.html(row['data1'][0]['F_EMP_NAME']);
+            //vueLoadingMask.warnings = row['data2']
+            //vueScheduleList.warnings = row['data2']
+            //});
+
+
+            //??????????20200115???到底要不要?
+
+            $.ajax({
+              type: 'post',
+              url: config.ajaxOrder,
+              data: {
+                Order: 'Get_CheckScheduleConfirm',
+                empid: scanEmpId
+              },
+              dataType: 'json',
+              success: function (data) {
+                console.log(data);
+                if (data.thisMonth == 'False') {
+                  alert('尚未確認班表，將自動跳轉頁面!');
+                  location.href = `./AgreeSchedule.html?empid=${scanEmpId}`;
+                }
+              }
             });
             request(config.apiHost + 'api/pointByCust&empCurrentSchedule2/' + currentCust + '/000/' + scanEmpId, function (error, response, body) {
               var rows = JSON.parse(body);
@@ -400,7 +436,6 @@
               }
               //設定vue data
               if (typeof (rows['data2']) != 'undefined') {
-                console.log(rows['data2']);
                 vueScheduleList.list = rows['data2'];
                 var html = $("html");
                 $(window).scroll(function () {
@@ -423,39 +458,38 @@
         choosePoint = pointid;
         $("a.current").removeClass("current");
         $(this).addClass("current");
-        var yesterday = vueScheduleList.list[pointid].list[0]["checkin"];
-        console.log(vueScheduleList.list[pointid]);
+        var yesterday = vueScheduleList.list[pointid].list[0];
         if (vueScheduleList.list[pointid].list[1]["checkin"]["GO_WORKTIME"] == "") {
-          $.ajax({
-            type: `post`,
-            url: `http://localhost:50381/XMLFORM/AjaxOrder.aspx`,
-            data: {
-              Order: `Get_HasScheduleConfirm`,
-              F_EMP_ID: scanEmpId
-            },
-            success: function (data) {
-              if (data == "True") {
-                gowork.show();
-                if (yesterday["GO_WORKTIME"] != "" && yesterday["OFF_WORKTIME"] == "") {
-                  let startHour = parseInt(yesterday["GO_WORKTIME"].substr(0, 2));
-                  if (startHour > 15 && d.getHours() <= 9) {
-                    offwork.show();
-                    gowork.hide();
-                  }
-                }
-              } else {
-                let changeLocation = confirm(`尚未確認班表，是否跳轉視窗?`);
-                if (changeLocation) {
-                  location.href = "./scheduleConfirm.html";
-                } else {
-                  loadingMask.css("display", "none");
-                  loading.css("display", "none");
-                  loading.removeClass("rotateIn");
-                  loading.addClass("rotateOut");
-                }
-              }
+          //$.ajax({
+          //type: `post`,
+          //url: config.ajaxOrder,
+          //data: {
+          //              Order: `Get_HasScheduleConfirm`,
+          //F_EMP_ID: scanEmpId
+          //},
+          //success: function (data) {
+          //              if (data == "True") {
+          gowork.show();
+          if (yesterday["checkin"]["GO_WORKTIME"] != "" && yesterday["checkin"]["OFF_WORKTIME"] == "" && d.getTime() > new Date(`${yesterday.checkin.REC_DATE} ${yesterday.edt.trim()}:00:00`).getTime() + (10 * 3600)) {
+            let startHour = parseInt(yesterday["checkin"]["GO_WORKTIME"].substr(0, 2));
+            if (startHour > 15 && d.getHours() <= 9) {
+              offwork.show();
+              gowork.hide();
             }
-          });
+          }
+          //            } else {
+          //let changeLocation = confirm(`尚未確認班表，是否跳轉視窗?`);
+          //if (changeLocation) {
+          //                  location.href = "./scheduleConfirm.html";
+          //} else {
+          //                  loadingMask.css("display", "none");
+          //loading.css("display", "none");
+          //loading.removeClass("rotateIn");
+          //loading.addClass("rotateOut");
+          //}
+          //}
+          //}
+          //});
 
         } else {
           offwork.show();
