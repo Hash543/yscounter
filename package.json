@@ -17,7 +17,7 @@
   "description": "",
   "dependencies": {
     "@tensorflow/tfjs-node": "^1.2.11",
-    "async": "v2.0.0-rc.6",
+    "async": "v2.6.4",
     "bootstrap": "^4.3.1",
     "canvas": "^2.6.0",
     "date-now": "^1.0.1",
